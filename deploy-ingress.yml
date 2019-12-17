@@ -1,0 +1,17 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  namespace: apps
+  name: game-poller
+spec:
+  rules:
+  - host: game-poller.thetablestop.com
+    http:
+      paths:
+      - backend:
+          serviceName: game-poller
+          servicePort: 8080
+  tls:
+  - hosts:
+    - game-poller.thetablestop.com
+    secretName: star-thetablestop-com

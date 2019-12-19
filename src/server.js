@@ -2,7 +2,41 @@ import express from 'express';
 import cors from 'cors';
 import http from 'http';
 import bodyParser from 'body-parser';
-import { HelloService } from './hello-service.js';
+import { MongoClient } from 'mongodb';
+import * as awilix from 'awilix';
+import { GameSourcesService } from './services/game-sources-service.js';
+import { GameSourcesController } from './controllers/game-sources-controller.js';
+
+const container = awilix.createContainer({
+    injectionMode: awilix.InjectionMode.PROXY
+});
+
+container.register({
+    mongodbProvider: awilix.asFunction(() => {
+        if (!process.env.MONGODB_CONNECTION) {
+            throw new Error('An environment variable MONGODB_CONNECTION is required with the value of the db connection string.');
+        }
+        return {
+            connect: async () => {
+                return new Promise((res, rej) => {
+                    MongoClient.connect(
+                        process.env.MONGODB_CONNECTION,
+                        {
+                            useUnifiedTopology: true
+                        },
+                        (err, client) => {
+                            if (err) rej(err);
+                            console.log('Connected to db');
+                            res(client.db(process.env.MONGODB_NAME || 'database'));
+                        }
+                    );
+                });
+            }
+        };
+    }),
+    gameSourcesController: awilix.asClass(GameSourcesController),
+    gameSourcesService: awilix.asClass(GameSourcesService)
+});
 
 const app = express();
 const router = express.Router();
@@ -21,17 +55,10 @@ app.use(bodyParser.urlencoded({ extended: true }))
         <h2>Version: ${pkg.version}</h2>`);
     });
 
-const port = process.env.NODE_PORT || 3000;
+const port = process.env.NODE_PORT || 3003;
 httpServer.listen(port);
 console.log(`Listening on http://localhost:${port}`);
 
 // Setup routes
-router.get('/test', async (req, res) => {
-    try {
-        const svc = new HelloService();
-        res.send(svc.sayHi(`${req.protocol}://${req.hostname}:${req.socket.localPort}/api/test`));
-    } catch (err) {
-        console.err(err);
-        res.sendStatus(500);
-    }
-});
+router.get('/source', async (req, res) => await container.cradle.gameSourcesController.getAll(req, res));
+router.get('/source/:name', async (req, res) => await container.cradle.gameSourcesController.find(req, res));

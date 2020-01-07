@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import http from 'http';
 import bodyParser from 'body-parser';
+import amqp from 'amqplib';
 import { MongoClient } from 'mongodb';
 import * as awilix from 'awilix';
 import { GameSourcesService } from './services/game-sources-service.js';
@@ -34,6 +35,19 @@ container.register({
             }
         };
     }),
+    pubSubQueueProvider: awilix.asFunction(() => {
+        if (!process.env.RABBITMQ_PUBSUB_CONNECTION) {
+            throw new Error(
+                'An environment variable RABBITMQ_PUBSUB_CONNECTION is required with the value of the queue connection string.'
+            );
+        }
+        return {
+            connect: async () => {
+                const conn = await amqp.connect(process.env.RABBITMQ_PUBSUB_CONNECTION);
+                return await conn.createChannel();
+            }
+        };
+    }),
     gameSourcesController: awilix.asClass(GameSourcesController),
     gameSourcesService: awilix.asClass(GameSourcesService)
 });
@@ -53,6 +67,28 @@ app.use(bodyParser.urlencoded({ extended: true }))
         const pkg = require('../package.json');
         res.send(`<h1>${pkg.name}</h1>
         <h2>Version: ${pkg.version}</h2>`);
+    })
+    .get('/status', async (req, res) => {
+        let result = '';
+        try {
+            await container.cradle.mongodbProvider.connect();
+            result += 'DB connection: Successful<br />';
+        } catch (err) {
+            result += `DB connection: Error: ${err}<br />`;
+        }
+
+        try {
+            var channel = await container.cradle.pubSubQueueProvider.connect();
+            if (channel) {
+                result += 'Queue channel connection: Successful<br />';
+            } else {
+                result += 'Queue channel connection: Failed<br />';
+            }
+            channel.close();
+        } catch (err) {
+            result += `Queue channel connection: ${err}<br />`;
+        }
+        res.send(result);
     });
 
 const port = process.env.NODE_PORT || 3003;

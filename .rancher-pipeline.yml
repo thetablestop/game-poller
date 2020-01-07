@@ -7,13 +7,6 @@ stages:
       path: ./.ingress.yml
   - applyYamlConfig:
       path: ./.deployment.yml
-      envFrom:
-      - sourceName: connection-strings
-        sourceKey: MONGODB_CONNECTION
-        targetKey: MONGODB_CONNECTION
-      - sourceName: connection-strings
-        sourceKey: RABBITMQ_PUBSUB_CONNECTION
-        targetKey: RABBITMQ_PUBSUB_CONNECTION
 notification:
   recipients:
   - recipient: builds

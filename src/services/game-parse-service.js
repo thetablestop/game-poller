@@ -1,10 +1,13 @@
 import axios from 'axios';
 import url from 'url';
+import chalk from 'chalk';
 
 export class GameParseService {
-    constructor({ gameSourcesService, pubSubQueueProvider }) {
+    constructor({ gameService, gameSourcesService, pubSubQueueProvider }) {
+        this.gameService = gameService;
         this.gameSourceService = gameSourcesService;
         this.queue = pubSubQueueProvider;
+        this.gamesQueueName = process.env.GAMES_QUEUE || 'games';
         const host = process.env.HTML_SCRAPER_SERVICE_HOST || 'localhost';
         const port = process.env.HTML_SCRAPER_SERVICE_PORT || 3002;
         this.scraperBaseUrl = `http://${host}:${port}/api/`;
@@ -28,6 +31,26 @@ export class GameParseService {
         const response = await axios.get(`${this.scraperBaseUrl}scrape/link?url=${siteUrl}&selector=${linkSelector}`);
         for (const a of response.data) {
             console.log(`Found link: ${a.content} (${a.link})`);
+            let entity;
+            try {
+                await this.gameService.upsert(a.content, a.link);
+                entity = await this.gameService.find(a.content);
+            } catch (err) {
+                console.error(chalk.red(`Error updating DB record for ${a.content}`));
+            }
+
+            try {
+                if (entity) {
+                    const ch = await this.queue.connect();
+                    const hasQ = await ch.assertQueue(this.gamesQueueName);
+                    if (hasQ) {
+                        console.log(`Sending to queue: ${entity.name}`);
+                        ch.sendToQueue(this.gamesQueueName, Buffer.from(JSON.stringify(entity)));
+                    }
+                }
+            } catch (err) {
+                console.error(chalk.red(`Error sending to queue for ${entity.name}`));
+            }
         }
 
         // Get the next page link and parse if exists

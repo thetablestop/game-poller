@@ -5,6 +5,7 @@ import bodyParser from 'body-parser';
 import amqp from 'amqplib';
 import { MongoClient } from 'mongodb';
 import * as awilix from 'awilix';
+import { GameService } from './services/game-service.js';
 import { GameSourcesService } from './services/game-sources-service.js';
 import { GameSourcesController } from './controllers/game-sources-controller.js';
 import { GameParseService } from './services/game-parse-service.js';
@@ -50,8 +51,9 @@ container.register({
         };
     }),
     gameSourcesController: awilix.asClass(GameSourcesController),
-    gameSourcesService: awilix.asClass(GameSourcesService),
-    gameParseService: awilix.asClass(GameParseService)
+    gameParseService: awilix.asClass(GameParseService),
+    gameService: awilix.asClass(GameService),
+    gameSourcesService: awilix.asClass(GameSourcesService)
 });
 
 const app = express();

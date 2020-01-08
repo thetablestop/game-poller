@@ -1,6 +1,7 @@
 export class GameSourcesController {
-    constructor({ gameSourcesService }) {
+    constructor({ gameSourcesService, currentUser }) {
         this.service = gameSourcesService;
+        this.user = currentUser;
     }
 
     async getAll(req, res) {
@@ -23,6 +24,11 @@ export class GameSourcesController {
 
     async insert(req, res) {
         try {
+            if (!this.user) {
+                res.sendStatus(401);
+                return;
+            }
+
             if (!req.body.name || !req.body.url || !req.body.linkSelector || !req.body.nextPageSelector) {
                 res.status(400).send('The following fields are rquired: name, url, linkSelector, nextPageSelector');
                 return;
@@ -33,7 +39,7 @@ export class GameSourcesController {
                 return;
             }
 
-            console.log(await this.service.insert(req.body));
+            await this.service.insert(req.body);
             res.set('Location', `${req.protocol}://${req.hostname}:${req.socket.localPort}/api/source/${req.body.name}`);
             res.sendStatus(201);
         } catch (err) {
@@ -44,6 +50,11 @@ export class GameSourcesController {
 
     async update(req, res) {
         try {
+            if (!this.user) {
+                res.sendStatus(401);
+                return;
+            }
+
             if (!req.body.name) {
                 res.status(400).send('The following fields are rquired: name');
                 return;
@@ -64,6 +75,11 @@ export class GameSourcesController {
 
     async delete(req, res) {
         try {
+            if (!this.user) {
+                res.sendStatus(401);
+                return;
+            }
+
             if (!req.params.name) {
                 res.status(400).send('The following fields are rquired: name');
                 return;

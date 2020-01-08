@@ -7,6 +7,7 @@ import { MongoClient } from 'mongodb';
 import * as awilix from 'awilix';
 import { GameSourcesService } from './services/game-sources-service.js';
 import { GameSourcesController } from './controllers/game-sources-controller.js';
+import { GameParseService } from './services/game-parse-service.js';
 
 const container = awilix.createContainer({
     injectionMode: awilix.InjectionMode.PROXY
@@ -49,7 +50,8 @@ container.register({
         };
     }),
     gameSourcesController: awilix.asClass(GameSourcesController),
-    gameSourcesService: awilix.asClass(GameSourcesService)
+    gameSourcesService: awilix.asClass(GameSourcesService),
+    gameParseService: awilix.asClass(GameParseService)
 });
 
 const app = express();
@@ -95,6 +97,15 @@ const port = process.env.NODE_PORT || 3003;
 httpServer.listen(port);
 console.log(`Listening on http://localhost:${port}`);
 
+// Setup job
+let pollInterval = null;
+const poll = () => {
+    const svc = container.cradle.gameParseService;
+    svc.parse();
+};
+
 // Setup routes
 router.get('/source', async (req, res) => await container.cradle.gameSourcesController.getAll(req, res));
 router.get('/source/:name', async (req, res) => await container.cradle.gameSourcesController.find(req, res));
+router.get('/task/pause', (req, res) => clearInterval(pollInterval));
+router.get('/task/resume', (req, res) => (pollInterval = setInterval(poll, (process.env.TASK_INTERVAL || 60) * 1000)));

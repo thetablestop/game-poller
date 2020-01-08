@@ -1,12 +1,12 @@
 export class GameSourcesService {
     constructor({ mongodbProvider }) {
-        this.db = mongodbProvider;
+        this.dbo = mongodbProvider.connect();
     }
 
     async getAll() {
-        const dbo = await this.db.connect();
-        return new Promise((res, rej) => {
-            dbo.collection('sources')
+        return new Promise(async (res, rej) => {
+            (await this.dbo)
+                .collection('sources')
                 .find()
                 .toArray((err, result) => {
                     if (err) rej(err);
@@ -16,9 +16,8 @@ export class GameSourcesService {
     }
 
     async find(name) {
-        const dbo = await this.db.connect();
-        return new Promise((res, rej) => {
-            dbo.collection('sources').findOne({ name: name }, (err, result) => {
+        return new Promise(async (res, rej) => {
+            (await this.dbo).collection('sources').findOne({ name: name }, (err, result) => {
                 if (err) rej(err);
                 else res(result);
             });

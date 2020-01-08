@@ -33,7 +33,7 @@ export class GameParseService {
             console.log(`Found link: ${a.content} (${a.link})`);
             let entity;
             try {
-                await this.gameService.upsert(a.content, a.link);
+                await this.gameService.upsert(a.content, site.name, a.link);
                 entity = await this.gameService.find(a.content);
             } catch (err) {
                 console.error(chalk.red(`Error updating DB record for ${a.content}`));

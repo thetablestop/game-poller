@@ -51,7 +51,7 @@ container.register({
         };
     }),
     gameSourcesController: awilix.asClass(GameSourcesController),
-    gameParseService: awilix.asClass(GameParseService),
+    gameParseService: awilix.asClass(GameParseService, { lifetime: awilix.Lifetime.SINGLETON }),
     gameService: awilix.asClass(GameService),
     gameSourcesService: awilix.asClass(GameSourcesService)
 });
@@ -73,7 +73,7 @@ app.use(bodyParser.urlencoded({ extended: true }))
         <h2>Version: ${pkg.version}</h2>`);
     })
     .get('/status', async (req, res) => {
-        let result = '';
+        let result = `Poller Task: ${container.cradle.gameParseService.paused ? 'Paused' : 'Active'}<br />`;
         try {
             await container.cradle.mongodbProvider.connect();
             result += 'DB connection: Successful<br />';
@@ -100,29 +100,29 @@ httpServer.listen(port);
 console.log(`Listening on http://localhost:${port}`);
 
 // Setup job
-let paused = false;
 const poll = async () => {
-    const svc = container.cradle.gameParseService;
     try {
-        await svc.parse();
-        if (!paused) {
+        await container.cradle.gameParseService.parse();
+        if (!container.cradle.gameParseService.paused) {
             setTimeout(poll, (process.env.TASK_INTERVAL || 60) * 1000);
         }
     } catch (err) {
         console.error(err);
     }
 };
-poll();
 
 // Setup routes
 router.get('/source', async (req, res) => await container.cradle.gameSourcesController.getAll(req, res));
 router.get('/source/:name', async (req, res) => await container.cradle.gameSourcesController.find(req, res));
+router.delete('/source/:name', async (req, res) => await container.cradle.gameSourcesController.delete(req, res));
+router.post('/source', async (req, res) => await container.cradle.gameSourcesController.insert(req, res));
+router.patch('/source', async (req, res) => await container.cradle.gameSourcesController.update(req, res));
 router.get('/task/pause', (req, res) => {
-    paused = true;
+    container.cradle.gameParseService.paused = true;
     res.send('Task Paused');
 });
 router.get('/task/resume', (req, res) => {
-    paused = false;
+    container.cradle.gameParseService.paused = false;
     poll();
     res.send('Task Resumed');
 });

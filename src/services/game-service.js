@@ -1,11 +1,12 @@
 export class GameService {
     constructor({ mongodbProvider }) {
         this.dbo = mongodbProvider.connect();
+        this.collectionName = 'games';
     }
 
     async find(name) {
         return new Promise(async (res, rej) => {
-            (await this.dbo).collection('game').findOne({ name: name }, (err, result) => {
+            (await this.dbo).collection(this.collectionName).findOne({ name: name }, (err, result) => {
                 if (err) rej(err);
                 else res(result);
             });
@@ -14,7 +15,7 @@ export class GameService {
 
     async upsert(name, sourceName, link) {
         return new Promise(async (res, rej) => {
-            (await this.dbo).collection('game').findOneAndUpdate(
+            (await this.dbo).collection(this.collectionName).findOneAndUpdate(
                 { name: name },
                 {
                     $set: {

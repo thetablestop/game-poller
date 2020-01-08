@@ -4,6 +4,7 @@ import chalk from 'chalk';
 
 export class GameParseService {
     constructor({ gameService, gameSourcesService, pubSubQueueProvider }) {
+        this.paused = false;
         this.gameService = gameService;
         this.gameSourceService = gameSourcesService;
         this.queue = pubSubQueueProvider;
@@ -16,8 +17,10 @@ export class GameParseService {
     async parse() {
         const sites = await this.gameSourceService.getAll();
         for (const s of sites) {
-            console.log(`Parsing site with url: ${s.url} and link selector: ${s.linkSelector}`);
-            await this._parseSite(s);
+            if (!this.paused) {
+                console.log(`Parsing site with url: ${s.url} and link selector: ${s.linkSelector}`);
+                await this._parseSite(s);
+            }
         }
     }
 
@@ -57,8 +60,10 @@ export class GameParseService {
         const nextPageSelector = encodeURIComponent(site.nextPageSelector);
         const nextPageResponse = await axios.get(`${this.scraperBaseUrl}scrape/link?url=${siteUrl}&selector=${nextPageSelector}`);
         if (nextPageResponse.data && !!nextPageResponse.data.length) {
-            console.log(`Navigating to ${nextPageResponse.data[0].link}`);
-            await this._parseSite(site, nextPageResponse.data[0].link);
+            if (!this.paused) {
+                console.log(`Navigating to ${nextPageResponse.data[0].link}`);
+                await this._parseSite(site, nextPageResponse.data[0].link);
+            }
         }
     }
 }

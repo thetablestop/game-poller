@@ -98,14 +98,29 @@ httpServer.listen(port);
 console.log(`Listening on http://localhost:${port}`);
 
 // Setup job
-let pollInterval = null;
-const poll = () => {
+let paused = false;
+const poll = async () => {
     const svc = container.cradle.gameParseService;
-    svc.parse();
+    try {
+        await svc.parse();
+        if (!paused) {
+            setTimeout(poll, (process.env.TASK_INTERVAL || 60) * 1000);
+        }
+    } catch (err) {
+        console.error(err);
+    }
 };
+poll();
 
 // Setup routes
 router.get('/source', async (req, res) => await container.cradle.gameSourcesController.getAll(req, res));
 router.get('/source/:name', async (req, res) => await container.cradle.gameSourcesController.find(req, res));
-router.get('/task/pause', (req, res) => clearInterval(pollInterval));
-router.get('/task/resume', (req, res) => (pollInterval = setInterval(poll, (process.env.TASK_INTERVAL || 60) * 1000)));
+router.get('/task/pause', (req, res) => {
+    paused = true;
+    res.send('Task Paused');
+});
+router.get('/task/resume', (req, res) => {
+    paused = false;
+    poll();
+    res.send('Task Resumed');
+});

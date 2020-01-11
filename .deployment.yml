@@ -6,7 +6,7 @@ metadata:
   labels:
     workload.user.cattle.io/workloadselector: deployment-apps-game-poller
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       workload.user.cattle.io/workloadselector: deployment-apps-game-poller

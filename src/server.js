@@ -3,10 +3,13 @@ import cors from 'cors';
 import http from 'http';
 import bodyParser from 'body-parser';
 import amqp from 'amqplib';
-import { MongoClient } from 'mongodb';
+import axios from 'axios';
 import * as awilix from 'awilix';
+import { MongoClient } from 'mongodb';
+import { GameService } from './services/game-service.js';
 import { GameSourcesService } from './services/game-sources-service.js';
 import { GameSourcesController } from './controllers/game-sources-controller.js';
+import { GameParseService } from './services/game-parse-service.js';
 
 const container = awilix.createContainer({
     injectionMode: awilix.InjectionMode.PROXY
@@ -48,8 +51,10 @@ container.register({
             }
         };
     }),
-    gameSourcesController: awilix.asClass(GameSourcesController),
-    gameSourcesService: awilix.asClass(GameSourcesService)
+    gameSourcesController: awilix.asClass(GameSourcesController).scoped(),
+    gameParseService: awilix.asClass(GameParseService).singleton(),
+    gameService: awilix.asClass(GameService).scoped(),
+    gameSourcesService: awilix.asClass(GameSourcesService).scoped()
 });
 
 const app = express();
@@ -69,7 +74,7 @@ app.use(bodyParser.urlencoded({ extended: true }))
         <h2>Version: ${pkg.version}</h2>`);
     })
     .get('/status', async (req, res) => {
-        let result = '';
+        let result = `Poller Task: ${container.cradle.gameParseService.paused ? 'Paused' : 'Active'}<br />`;
         try {
             await container.cradle.mongodbProvider.connect();
             result += 'DB connection: Successful<br />';
@@ -95,6 +100,69 @@ const port = process.env.NODE_PORT || 3003;
 httpServer.listen(port);
 console.log(`Listening on http://localhost:${port}`);
 
+// Setup job
+const poll = async () => {
+    try {
+        await container.cradle.gameParseService.parse();
+        if (!container.cradle.gameParseService.paused) {
+            setTimeout(poll, (process.env.TASK_INTERVAL || 60) * 1000);
+        }
+    } catch (err) {
+        console.error(err);
+    }
+};
+
 // Setup routes
-router.get('/source', async (req, res) => await container.cradle.gameSourcesController.getAll(req, res));
-router.get('/source/:name', async (req, res) => await container.cradle.gameSourcesController.find(req, res));
+router
+    .use(async (req, res, next) => {
+        // create a scoped container
+        req.scope = container.createScope();
+        // check auth header and verify they are in the org to register a logged in user
+        try {
+            const userRes = await axios.get('https://api.github.com/user', {
+                headers: {
+                    Authorization: req.header('Authorization')
+                }
+            });
+
+            if (userRes.data && userRes.data.login) {
+                const orgRes = await axios.get('https://api.github.com/user/orgs', {
+                    headers: {
+                        Authorization: req.header('Authorization')
+                    }
+                });
+                if (orgRes.data && orgRes.data.length && orgRes.data[0].login === 'thetablestop') {
+                    req.user = userRes.data;
+                }
+            }
+        } catch (err) {
+            console.error(`User not authorized with header: ${req.headers.Authorization}`);
+        }
+
+        req.scope.register({
+            currentUser: awilix.asValue(req.user)
+        });
+        next();
+    })
+    .get('/source', async (req, res) => await req.scope.resolve('gameSourcesController').getAll(req, res))
+    .get('/source/:name', async (req, res) => await req.scope.resolve('gameSourcesController').find(req, res))
+    .delete('/source/:name', async (req, res) => await req.scope.resolve('gameSourcesController').delete(req, res))
+    .post('/source', async (req, res) => await req.scope.resolve('gameSourcesController').insert(req, res))
+    .patch('/source', async (req, res) => await req.scope.resolve('gameSourcesController').update(req, res))
+    .get('/task/pause', (req, res) => {
+        if (!req.user) {
+            res.sendStatus(401);
+        }
+
+        container.cradle.gameParseService.paused = true;
+        res.send('Task Paused');
+    })
+    .get('/task/resume', (req, res) => {
+        if (!req.user) {
+            res.sendStatus(401);
+        }
+
+        container.cradle.gameParseService.paused = false;
+        poll();
+        res.send('Task Resumed');
+    });

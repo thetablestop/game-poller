@@ -101,6 +101,7 @@ httpServer.listen(port);
 console.log(`Listening on http://localhost:${port}`);
 
 // Setup job
+container.cradle.gameParseService.paused = true;
 const poll = async () => {
     try {
         await container.cradle.gameParseService.parse();

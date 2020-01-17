@@ -1,54 +1,36 @@
 export class GameSourcesService {
     constructor({ mongodbProvider }) {
-        this.dbo = mongodbProvider.connect();
+        this.mongodbProvider = mongodbProvider;
         this.collectionName = 'sources';
     }
 
     async getAll() {
-        return new Promise(async (res, rej) => {
-            (await this.dbo)
-                .collection(this.collectionName)
-                .find()
-                .toArray((err, result) => {
-                    if (err) rej(err);
-                    else res(result);
-                });
-        });
+        const dbo = await this.mongodbProvider.connect();
+        const collection = dbo.collection(this.collectionName);
+        return await collection.find().toArray();
     }
 
     async find(name) {
-        return new Promise(async (res, rej) => {
-            (await this.dbo).collection(this.collectionName).findOne({ name: name }, (err, result) => {
-                if (err) rej(err);
-                else res(result);
-            });
-        });
+        const dbo = await this.mongodbProvider.connect();
+        const collection = dbo.collection(this.collectionName);
+        return await collection.findOne({ name: name });
     }
 
     async insert(source) {
-        return new Promise(async (res, rej) => {
-            (await this.dbo).collection(this.collectionName).insertOne(source, (err, result) => {
-                if (err) rej(err);
-                else res(result);
-            });
-        });
+        const dbo = await this.mongodbProvider.connect();
+        const collection = dbo.collection(this.collectionName);
+        return await collection.insertOne(source);
     }
 
     async update(source) {
-        return new Promise(async (res, rej) => {
-            (await this.dbo).collection(this.collectionName).updateOne({ name: source.name }, { $set: source }, (err, result) => {
-                if (err) rej(err);
-                else res(result);
-            });
-        });
+        const dbo = await this.mongodbProvider.connect();
+        const collection = dbo.collection(this.collectionName);
+        return await collection.updateOne({ name: source.name }, { $set: source });
     }
 
     async delete(name) {
-        return new Promise(async (res, rej) => {
-            (await this.dbo).collection(this.collectionName).findOneAndDelete({ name: name }, (err, result) => {
-                if (err) rej(err);
-                else res(result);
-            });
-        });
+        const dbo = await this.mongodbProvider.connect();
+        const collection = dbo.collection(this.collectionName);
+        return await collection.findOneAndDelete({ name: name });
     }
 }

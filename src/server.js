@@ -30,8 +30,10 @@ container.register({
                         },
                         (err, client) => {
                             if (err) rej(err);
-                            console.log('Connected to db');
-                            res(client.db(process.env.MONGODB_NAME || 'database'));
+                            else {
+                                console.log('Connected to db');
+                                res(client.db(process.env.MONGODB_NAME || 'database'));
+                            }
                         }
                     );
                 });

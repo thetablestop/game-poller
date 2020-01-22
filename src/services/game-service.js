@@ -1,39 +1,34 @@
 export class GameService {
     constructor({ mongodbProvider }) {
-        this.dbo = mongodbProvider.connect();
+        this.mongodbProvider = mongodbProvider;
         this.collectionName = 'games';
     }
 
     async find(name) {
-        return new Promise(async (res, rej) => {
-            (await this.dbo).collection(this.collectionName).findOne({ name: name }, (err, result) => {
-                if (err) rej(err);
-                else res(result);
-            });
-        });
+        const dbo = await this.mongodbProvider.connect();
+        const collection = dbo.collection(this.collectionName);
+        return await collection.findOne({ name: name });
     }
 
     async upsert(name, sourceName, link) {
-        return new Promise(async (res, rej) => {
-            (await this.dbo).collection(this.collectionName).findOneAndUpdate(
-                { name: name },
-                {
-                    $set: {
-                        name: name,
-                        link: link,
-                        sourceName: sourceName
-                    }
-                },
-                {
-                    returnOriginal: false,
-                    sort: [['name', 1]],
-                    upsert: true
-                },
-                (err, result) => {
-                    if (err) rej(err);
-                    else res(result);
+        const dbo = await this.mongodbProvider.connect();
+        const collection = dbo.collection(this.collectionName);
+        return collection.findOneAndUpdate(
+            {
+                name: name
+            },
+            {
+                $set: {
+                    name: name,
+                    link: link,
+                    sourceName: sourceName
                 }
-            );
-        });
+            },
+            {
+                returnOriginal: false,
+                sort: [['name', 1]],
+                upsert: true
+            }
+        );
     }
 }

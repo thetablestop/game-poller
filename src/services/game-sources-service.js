@@ -31,7 +31,7 @@ export class GameSourcesService {
     async updatePage(sourceName, page) {
         const dbo = await this.mongodbProvider.connect();
         const collection = dbo.collection(this.collectionName);
-        return await collection.updateOne({ name: sourceName }, { $set: { page: page } });
+        return await collection.updateOne({ name: sourceName }, { $set: { currentPage: page } });
     }
 
     async delete(name) {

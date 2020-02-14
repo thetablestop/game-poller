@@ -19,12 +19,14 @@ export class GameParseService {
         for (const s of sites) {
             if (!this.paused) {
                 console.log(`Parsing site with url: ${s.url} and link selector: ${s.linkSelector}`);
-                await this._parseSite(s);
+                await this._parseSite(s, s.page || null);
             }
         }
     }
 
     async _parseSite(site, page = null) {
+        setParseStatus(site.name, page);
+
         // Get all the links
         let siteUrl = encodeURIComponent(site.url);
         if (page != null) {
@@ -64,6 +66,8 @@ export class GameParseService {
                 console.log(`Navigating to ${nextPageResponse.data[0].link}`);
                 await this._parseSite(site, nextPageResponse.data[0].link);
             }
+        } else {
+            setParseStatus(site.name, null);
         }
     }
 }

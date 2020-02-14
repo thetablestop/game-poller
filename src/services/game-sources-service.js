@@ -28,6 +28,12 @@ export class GameSourcesService {
         return await collection.updateOne({ name: source.name }, { $set: source });
     }
 
+    async updatePage(sourceName, page) {
+        const dbo = await this.mongodbProvider.connect();
+        const collection = dbo.collection(this.collectionName);
+        return await collection.updateOne({ name: sourceName }, { $set: { page: page } });
+    }
+
     async delete(name) {
         const dbo = await this.mongodbProvider.connect();
         const collection = dbo.collection(this.collectionName);

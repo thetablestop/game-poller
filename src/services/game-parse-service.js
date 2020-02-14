@@ -25,7 +25,7 @@ export class GameParseService {
     }
 
     async _parseSite(site, page = null) {
-        setParseStatus(site.name, page);
+        this.gameSourceService.updatePage(site.name, page);
 
         // Get all the links
         let siteUrl = encodeURIComponent(site.url);
@@ -67,7 +67,7 @@ export class GameParseService {
                 await this._parseSite(site, nextPageResponse.data[0].link);
             }
         } else {
-            setParseStatus(site.name, null);
+            this.gameSourceService.updatePage(site.name, null);
         }
     }
 }

@@ -70,13 +70,15 @@ export class GameParseService {
             if (nextPageResponse.data && !!nextPageResponse.data.length) {
                 const nextPage = nextPageResponse.data[0].link;
                 if (this.paused) {
+                    console.log(`Poller for ${site.name} paused. Next run will start on ${nextPage}`);
                     this.gameSourceService.updatePage(site.name, nextPage);
                 } else {
-                    console.log(`Navigating to ${nextPage}`);
+                    console.log(`Poller for ${site.name} navigating to ${nextPage}`);
                     await this._parseSite(site, nextPage);
                 }
             } else {
                 this.gameSourceService.updatePage(site.name, null);
+                console.log(`Poller for ${site.name} complete ${nextPage}`);
             }
         } catch (err) {
             console.error(err);

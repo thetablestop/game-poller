@@ -78,7 +78,7 @@ export class GameParseService {
                 }
             } else {
                 this.gameSourceService.updatePage(site.name, null);
-                console.log(`Poller for ${site.name} complete ${nextPage}`);
+                console.log(`Poller for ${site.name} complete!`);
             }
         } catch (err) {
             console.error(err);

@@ -1,6 +1,9 @@
 import axios from 'axios';
 import url from 'url';
 import chalk from 'chalk';
+import robotsParser from 'robots-txt-parser';
+import ip from 'ip';
+import moment from 'moment';
 
 export class GameParseService {
     constructor({ gameService, gameSourcesService, pubSubQueueProvider }) {
@@ -12,6 +15,10 @@ export class GameParseService {
         const host = process.env.HTML_SCRAPER_SERVICE_HOST || 'localhost';
         const port = process.env.HTML_SCRAPER_SERVICE_PORT || 3002;
         this.scraperBaseUrl = `http://${host}:${port}/api/`;
+        this.robots = robotsParser({
+            userAgent: 'Googlebot',
+            allowOnNeutral: false
+        });
     }
 
     async parse() {
@@ -19,22 +26,18 @@ export class GameParseService {
         for (const s of sites) {
             if (!this.paused) {
                 console.log(`Parsing site with url: ${s.url} and link selector: ${s.linkSelector}`);
-                await this._parseSite(s, s.currentPage || null);
+                await this._parseSite(s.name, s.currentPage || null);
             }
         }
     }
 
-    async _parseSite(site, page = null) {
+    async _parseSite(siteName, page = null) {
+        const site = await this.gameSourceService.find(siteName);
         this.gameSourceService.updatePage(site.name, page);
 
         // Get all the links
-        let siteUrl = encodeURIComponent(site.url);
-        if (page != null) {
-            siteUrl = encodeURIComponent(url.resolve(site.url, page));
-        }
-        const linkSelector = encodeURIComponent(site.linkSelector);
         try {
-            const response = await axios.get(`${this.scraperBaseUrl}scrape/link?url=${siteUrl}&selector=${linkSelector}`);
+            const response = await this._scrapeLinks(site, page, site.linkSelector);
             for (const a of response.data) {
                 console.log(`Found link: ${a.content} (${a.link})`);
                 let entity;
@@ -60,13 +63,12 @@ export class GameParseService {
             }
         } catch (err) {
             console.error(err);
-            setTimeout(() => this._parseSite(site, page), 5000);
+            setTimeout(() => this._parseSite(siteName, page), 5000);
         }
 
         // Get the next page link and parse if exists
-        const nextPageSelector = encodeURIComponent(site.nextPageSelector);
         try {
-            const nextPageResponse = await axios.get(`${this.scraperBaseUrl}scrape/link?url=${siteUrl}&selector=${nextPageSelector}`);
+            const nextPageResponse = await this._scrapeLinks(site, page, site.nextPageSelector);
             if (nextPageResponse.data && !!nextPageResponse.data.length) {
                 const nextPage = nextPageResponse.data[0].link;
                 if (this.paused) {
@@ -74,7 +76,7 @@ export class GameParseService {
                     this.gameSourceService.updatePage(site.name, nextPage);
                 } else {
                     console.log(`Poller for ${site.name} navigating to ${nextPage}`);
-                    await this._parseSite(site, nextPage);
+                    await this._parseSite(siteName, nextPage);
                 }
             } else {
                 this.gameSourceService.updatePage(site.name, null);
@@ -83,5 +85,60 @@ export class GameParseService {
         } catch (err) {
             console.error(err);
         }
+    }
+
+    async _scrapeLinks(site, page, selector) {
+        let siteUrl = site.url;
+        if (page != null) {
+            siteUrl = url.resolve(site.url, page);
+        }
+
+        const robotUrl = new URL('robots.txt', new URL(siteUrl).origin);
+        console.log(`Parsing robots file for ${robotUrl}`);
+        await this.robots.useRobotsFor(robotUrl.href);
+        const canCrawl = await this.robots.canCrawl(siteUrl);
+        console.log(`Can crawl ${siteUrl}? ${canCrawl}`);
+
+        if (!canCrawl) {
+            return Promise.reject(`Not allowed to crawl ${siteUrl}`);
+        }
+
+        let timeout = 0;
+
+        // Get wait value to adhere to crawl delay
+        const crawlDelay = await this.robots.getCrawlDelay();
+        console.log(`Crawl delay for ${siteUrl}: ${crawlDelay} seconds`);
+        if (site.lastPolled) {
+            const lastPoll = moment(site.lastPolled[ip.address()]);
+            if (lastPoll) {
+                const timeSinceLastPoll = moment.duration(moment().diff(lastPoll)).seconds();
+                if (timeSinceLastPoll < crawlDelay) {
+                    timeout = (crawlDelay - timeSinceLastPoll) * 1000;
+                }
+            }
+        }
+
+        if (timeout) {
+            console.log(`Waiting ${timeout} ms before attempting next parse`);
+        }
+
+        return new Promise((res, rej) => {
+            setTimeout(
+                async (u, s) => {
+                    try {
+                        const result = await axios.get(
+                            `${this.scraperBaseUrl}scrape/link?url=${encodeURIComponent(u)}&selector=${encodeURIComponent(s)}`
+                        );
+                        this.gameSourceService.logLastPolled(site.name, ip.address());
+                        res(result);
+                    } catch (err) {
+                        rej(err);
+                    }
+                },
+                timeout,
+                siteUrl,
+                selector
+            );
+        });
     }
 }

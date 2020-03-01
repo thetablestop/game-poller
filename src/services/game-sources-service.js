@@ -34,6 +34,14 @@ export class GameSourcesService {
         return await collection.updateOne({ name: sourceName }, { $set: { currentPage: page } });
     }
 
+    async logLastPolled(sourceName, ip) {
+        const dbo = await this.mongodbProvider.connect();
+        const collection = dbo.collection(this.collectionName);
+        const lastPolled = {};
+        lastPolled[ip] = new Date().getTime();
+        return await collection.updateOne({ name: sourceName }, { $set: { lastPolled: lastPolled } });
+    }
+
     async delete(name) {
         const dbo = await this.mongodbProvider.connect();
         const collection = dbo.collection(this.collectionName);

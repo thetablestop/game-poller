@@ -26,14 +26,19 @@ export class GameParseService {
         for (const s of sites) {
             if (!this.paused) {
                 console.log(`Parsing site with url: ${s.url} and link selector: ${s.linkSelector}`);
-                await this._parseSite(s.name, s.currentPage || null);
+                try {
+                    await this._parseSite(s.name, s.currentPage || null);
+                } catch (err) {
+                    console.error(`Error parsing site '${s.name}'`, err);
+                }
             }
         }
     }
 
     async _parseSite(siteName, page = null) {
+        const site = await this.gameSourceService.find(siteName);
+
         try {
-            const site = await this.gameSourceService.find(siteName);
             this.gameSourceService.updatePage(site.name, page);
 
             // Get all the links
@@ -62,7 +67,7 @@ export class GameParseService {
                 }
             }
         } catch (err) {
-            console.error(err);
+            console.error(`Error parsing page ${page} for '${site.name}'. Retrying in 5 seconds...`, err);
             setTimeout(() => this._parseSite(siteName, page), 5000);
         }
 
@@ -83,6 +88,7 @@ export class GameParseService {
                 console.log(`Poller for ${site.name} complete!`);
             }
         } catch (err) {
+            console.error(`Error getting next page on page ${page} for '${site.name}'.`, err);
             console.error(err);
         }
     }

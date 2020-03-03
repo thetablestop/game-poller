@@ -32,11 +32,11 @@ export class GameParseService {
     }
 
     async _parseSite(siteName, page = null) {
-        const site = await this.gameSourceService.find(siteName);
-        this.gameSourceService.updatePage(site.name, page);
-
-        // Get all the links
         try {
+            const site = await this.gameSourceService.find(siteName);
+            this.gameSourceService.updatePage(site.name, page);
+
+            // Get all the links
             const response = await this._scrapeLinks(site, page, site.linkSelector);
             for (const a of response.data) {
                 console.log(`Found link: ${a.content} (${a.link})`);

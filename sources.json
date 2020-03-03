@@ -1,0 +1,27 @@
+{
+    "name": "BoardGameGeek",
+    "url": "https://boardgamegeek.com/browse/boardgame",
+    "linkSelector": "[id^='results_objectname'] > a",
+    "nextPageSelector": "#maincontent a[title='next page']",
+    "contentSelectors": {
+        "published": "div[ng-show=\"geekitemctrl.geekitem.loaded\"] div.game-header-title-info h1 span",
+        "rating": "div[ng-show=\"geekitemctrl.geekitem.loaded\"] div.game-header-title-rating span",
+        "players": "div[ng-show=\"geekitemctrl.geekitem.loaded\"] ul.gameplay li.gameplay-item:nth-child(1) div.gameplay-item-primary",
+        "playtime": "div[ng-show=\"geekitemctrl.geekitem.loaded\"] ul.gameplay li.gameplay-item:nth-child(2) div.gameplay-item-primary",
+        "age": "div[ng-show=\"geekitemctrl.geekitem.loaded\"] ul.gameplay li.gameplay-item:nth-child(3) div.gameplay-item-primary",
+        "complexity": "div[ng-show=\"geekitemctrl.geekitem.loaded\"] ul.gameplay li.gameplay-item:nth-child(4) div.gameplay-item-primary",
+        "designers": "div[ng-show=\"geekitemctrl.geekitem.loaded\"] div.game-header-credits li:nth-child(1) popup-list",
+        "artists": "div[ng-show=\"geekitemctrl.geekitem.loaded\"] div.game-header-credits li:nth-child(2) popup-list",
+        "publishers": "div[ng-show=\"geekitemctrl.geekitem.loaded\"] div.game-header-credits li:nth-child(3) popup-list",
+        "type": "div[ng-show=\"geekitemctrl.geekitem.loaded\"] ul.features li.feature:nth-child(1) div.feature-description",
+        "categories": "div[ng-show=\"geekitemctrl.geekitem.loaded\"] ul.features li.feature:nth-child(2) div.feature-description"
+    },
+    "htmlContentSelectors": {
+        "description": "div[ng-show=\"geekitemctrl.geekitem.loaded\"] article.game-description-body"
+    },
+    "postProcessors": {
+        "complexity": "x => x.split('\\n')[0]",
+        "published": "x => x.replace(/\\D/g,'')",
+        "type": "x => x.split('\\n')[0]"
+    }
+}

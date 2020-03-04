@@ -4,6 +4,7 @@ import http from 'http';
 import bodyParser from 'body-parser';
 import amqp from 'amqplib';
 import axios from 'axios';
+import chalk from 'chalk';
 import * as awilix from 'awilix';
 import { MongoClient } from 'mongodb';
 import { GameService } from './services/game-service.js';
@@ -108,12 +109,14 @@ console.log(`Listening on http://localhost:${port}`);
 // Setup job
 const poll = async () => {
     try {
+        console.log(chalk.blue('Starting poller iteration'));
         await container.cradle.gameParseService.parse();
+    } catch (err) {
+        console.error(err);
+    } finally {
         if (!container.cradle.gameParseService.paused) {
             setTimeout(poll, (process.env.TASK_INTERVAL || 60) * 1000);
         }
-    } catch (err) {
-        console.error(err);
     }
 };
 container.cradle.gameParseService.paused = false;

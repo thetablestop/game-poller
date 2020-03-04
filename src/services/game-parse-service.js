@@ -22,6 +22,7 @@ export class GameParseService {
     }
 
     async parse() {
+        console.log('Getting all the game sources');
         const sites = await this.gameSourceService.getAll();
         for (const s of sites) {
             if (!this.paused) {
@@ -67,8 +68,7 @@ export class GameParseService {
                 }
             }
         } catch (err) {
-            console.error(`Error parsing page ${page} for '${site.name}'. Retrying in 5 seconds...`, err);
-            setTimeout(() => this._parseSite(siteName, page), 5000);
+            console.error(`Error parsing page ${page} for '${site.name}'`, err);
         }
 
         // Get the next page link and parse if exists
@@ -89,7 +89,6 @@ export class GameParseService {
             }
         } catch (err) {
             console.error(`Error getting next page on page ${page} for '${site.name}'.`, err);
-            console.error(err);
         }
     }
 

@@ -85,10 +85,14 @@ export class GameParseService {
                 }
             } else {
                 this.gameSourceService.updatePage(site.name, null);
-                console.log(`Poller for ${site.name} complete!`);
+                console.log(chalk.green(`Poller for ${site.name} complete!`));
             }
         } catch (err) {
             console.error(`Error getting next page on page ${page} for '${site.name}'.`, err);
+            if (err.response.data.error === 'selector not available') {
+                this.gameSourceService.updatePage(site.name, null);
+                console.log(chalk.green(`Poller for ${site.name} complete!`));
+            }
         }
     }
 
